@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const baseURL = import.meta.env.VITE_API_BASE || "https://localhost:7137";
-const api = axios.create({ baseURL });
+export const api = axios.create({ baseURL });
 
 // helper: set/remove Authorization header cho tất cả request
 export function setAuthToken(token) {

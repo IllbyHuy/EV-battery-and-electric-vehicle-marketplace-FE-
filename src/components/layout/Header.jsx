@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { Zap, Search, Sparkles, Bolt, BatteryCharging } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../ui/button";
+import { useAuth } from "../../contexts/AuthContext"; // Đảm bảo import từ context mới
 
 const navItems = [
   { to: "/search", label: "Search", icon: Search },
@@ -12,11 +13,16 @@ const navItems = [
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const { user, logout } = useAuth();
+  console.log("Header user:", user);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 font-extrabold tracking-tight">
+        <Link
+          to="/"
+          className="flex items-center gap-2 font-extrabold tracking-tight"
+        >
           <Zap className="h-6 w-6 text-primary" />
           <span className="text-lg">VoltMarket</span>
         </Link>
@@ -36,9 +42,40 @@ export default function Header() {
           ))}
         </nav>
 
+        {/* Đây là phần thay đổi giao diện khi đã đăng nhập */}
         <div className="hidden items-center gap-2 md:flex">
-          <Link to="/login"><Button variant="ghost">Log in</Button></Link>
-          <Link to="/register"><Button>Sign up</Button></Link>
+          {user ? (
+            <>
+              <span className="font-semibold">
+                {user.username || user.email || "User"}
+                {user.role && (
+                  <span className="ml-2 px-2 py-0.5 rounded bg-gray-200 text-xs text-gray-700">
+                    {user.role}
+                  </span>
+                )}
+              </span>
+              {user.role === "Admin" && (
+                <NavLink
+                  to="/admin"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-red-50 text-red-800 font-semibold"
+                >
+                  Admin Panel
+                </NavLink>
+              )}
+              <Button variant="ghost" onClick={logout}>
+                Log out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="ghost">Log in</Button>
+              </Link>
+              <Link to="/register">
+                <Button>Sign up</Button>
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -46,13 +83,13 @@ export default function Header() {
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
         >
-          {/* simple hamburger */}
           <span className="block h-0.5 w-5 bg-current mb-1" />
           <span className="block h-0.5 w-5 bg-current mb-1" />
           <span className="block h-0.5 w-5 bg-current" />
         </button>
       </div>
 
+      {/* Mobile menu cũng nên check user */}
       {open && (
         <div className="border-t md:hidden">
           <div className="container flex flex-col gap-1 py-2">
@@ -68,8 +105,42 @@ export default function Header() {
               </Link>
             ))}
             <div className="mt-2 flex gap-2">
-              <Link to="/login" onClick={() => setOpen(false)} className="flex-1"><Button variant="ghost" className="w-full">Log in</Button></Link>
-              <Link to="/register" onClick={() => setOpen(false)} className="flex-1"><Button className="w-full">Sign up</Button></Link>
+              {user ? (
+                <>
+                  <span className="font-semibold flex-1">
+                    {user.name || user.email || "User"}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    className="flex-1"
+                    onClick={() => {
+                      setOpen(false);
+                      logout();
+                    }}
+                  >
+                    Log out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={() => setOpen(false)}
+                    className="flex-1"
+                  >
+                    <Button variant="ghost" className="w-full">
+                      Log in
+                    </Button>
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setOpen(false)}
+                    className="flex-1"
+                  >
+                    <Button className="w-full">Sign up</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -77,5 +148,3 @@ export default function Header() {
     </header>
   );
 }
-
-

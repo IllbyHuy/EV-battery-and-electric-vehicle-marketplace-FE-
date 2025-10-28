@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/Button/Button";
 import Input from "../../components/Input/Input";
-import useAuth from "../../hooks/useAuth";
+import { useAuth } from "../../contexts/AuthContext";
 import { userLogin } from "../../api/userApi";
 
 export default function LoginPage() {

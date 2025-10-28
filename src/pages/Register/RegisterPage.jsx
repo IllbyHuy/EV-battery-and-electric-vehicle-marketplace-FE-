@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/Button/Button";
 import Input from "../../components/Input/Input";
-import useAuth from "../../hooks/useAuth";
+import { useAuth } from "../../contexts/AuthContext";
 import { userRegister, registerOtp } from "../../api/userApi";
 
 export default function RegisterPage() {
@@ -35,7 +35,13 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await userRegister({ username, email, password, address, phoneNumber });
+      const res = await userRegister({
+        username,
+        email,
+        password,
+        address,
+        phoneNumber,
+      });
       // lưu email để dùng verify OTP mà không bắt nhập lại
       setPendingEmail(email);
       setRegisterRes(res); // nếu backend trả token tạm thời, lưu và dùng khi verify
@@ -62,7 +68,9 @@ export default function RegisterPage() {
       setShowOtpModal(false);
       navigate("/");
     } catch (err) {
-      setOtpError(err.response?.data?.message || err.message || "OTP verification failed");
+      setOtpError(
+        err.response?.data?.message || err.message || "OTP verification failed",
+      );
     } finally {
       setOtpLoading(false);
     }
@@ -72,12 +80,42 @@ export default function RegisterPage() {
     <div className="container py-14 max-w-md">
       <h1 className="text-2xl font-semibold mb-4">Register</h1>
       <form className="space-y-3" onSubmit={handleSubmit}>
-        <Input placeholder="Name" type="text" value={username} onChange={(e) => setUserName(e.target.value)} />
-        <Input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <Input placeholder="Confirm Password" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        <Input placeholder="Phone Number" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
-        <Input placeholder="Address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <Input
+          placeholder="Username"
+          type="text"
+          value={username}
+          onChange={(e) => setUserName(e.target.value)}
+        />
+        <Input
+          placeholder="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Input
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Input
+          placeholder="Confirm Password"
+          type="password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+        <Input
+          placeholder="Phone Number"
+          type="tel"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+        />
+        <Input
+          placeholder="Address"
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
         {error && <div className="text-red-500 text-sm">{error}</div>}
         <Button className="w-full" type="submit" disabled={loading}>
           {loading ? "Signing up..." : "Sign up"}
@@ -91,13 +129,28 @@ export default function RegisterPage() {
             <p className="text-sm mb-4">
               Nhập mã OTP đã gửi tới: <strong>{pendingEmail}</strong>
             </p>
-            <Input placeholder="Enter OTP" type="text" value={otp} onChange={(e) => setOtp(e.target.value)} />
-            {otpError && <div className="text-red-500 text-sm mt-2">{otpError}</div>}
+            <Input
+              placeholder="Enter OTP"
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+            />
+            {otpError && (
+              <div className="text-red-500 text-sm mt-2">{otpError}</div>
+            )}
             <div className="flex gap-2 mt-4">
-              <Button type="button" onClick={handleVerifyOtp} disabled={otpLoading}>
+              <Button
+                type="button"
+                onClick={handleVerifyOtp}
+                disabled={otpLoading}
+              >
                 {otpLoading ? "Verifying..." : "Verify"}
               </Button>
-              <Button type="button" className="bg-gray-200 text-black" onClick={() => setShowOtpModal(false)}>
+              <Button
+                type="button"
+                className="bg-gray-200 text-black"
+                onClick={() => setShowOtpModal(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -107,5 +160,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-
