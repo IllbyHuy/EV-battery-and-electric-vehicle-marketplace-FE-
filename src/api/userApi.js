@@ -21,6 +21,11 @@ export const getProfile = async () => {
   return data;
 };
 
+export const getUser = async () => {
+  const { data } = await api.get("/api/User/GetUser");
+  return data;
+};
+
 export const userRegister = async (payload) => {
   const { data } = await api.post("/api/Auth/register", payload);
   return data;

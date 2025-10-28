@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { api, setAuthToken } from "../api/userApi";
+import { api, setAuthToken, getUser } from "../api/userApi";
 
 const AuthContext = createContext();
 
@@ -12,10 +12,10 @@ export function AuthProvider({ children }) {
     if (token) {
       // ensure api instance sends Authorization header
       setAuthToken(token);
-      api
-        .get("/api/User/GetUser")
+      getUser()
         .then((res) => {
-          setUser(res.data.result);
+          // backend may return shape { result: user } or user directly
+          setUser(res.result ?? res);
         })
         .catch(() => {
           setUser(null);
@@ -27,13 +27,27 @@ export function AuthProvider({ children }) {
 
   // Login nhận response, lưu token, fetch user info
   const login = async (res) => {
-    if (res.token) {
-      localStorage.setItem("token", res.token);
-      // set header on shared api instance and fetch user info
-      setAuthToken(res.token);
+    // Accept either: { token, user } (response from userLogin)
+    // or a token string
+    let token = null;
+    if (!res) return;
+    if (typeof res === "string") token = res;
+    else if (res.token) token = res.token;
+    else if (res.accessToken) token = res.accessToken;
+
+    if (token) {
+      localStorage.setItem("token", token);
+      setAuthToken(token);
       try {
-        const userRes = await api.get("/api/User/GetUser");
-        setUser(userRes.data.result);
+        const userRes = await getUser();
+        setUser(userRes.result ?? userRes);
+        // optionally cache user in localStorage
+        try {
+          localStorage.setItem(
+            "user",
+            JSON.stringify(userRes.result ?? userRes),
+          );
+        } catch {}
       } catch {
         setUser(null);
       }
@@ -43,6 +57,8 @@ export function AuthProvider({ children }) {
   // Logout xoá token, xoá user
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setAuthToken(null);
     setUser(null);
   };
 
