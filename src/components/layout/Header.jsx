@@ -24,14 +24,14 @@ export default function Header() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-40 w-full bg-transparent">
+      <div className="container flex h-16 items-center justify-between text-white">
         <Link
           to="/"
-          className="flex items-center gap-2 font-extrabold tracking-tight"
+          className="flex items-center gap-3 font-extrabold tracking-tight"
         >
-          <Zap className="h-6 w-6 text-primary" />
-          <span className="text-lg">VoltMarket</span>
+          <Zap className="h-6 w-6 text-[#7c5cff]" />
+          <span className="text-lg text-white">VoltMarket</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -41,9 +41,7 @@ export default function Header() {
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`
+                `flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-white/5 hover:text-white ${isActive ? "text-[#7c5cff]" : "text-white/70"}`
               }
             >
               <Icon className="h-4 w-4" />
@@ -69,22 +67,22 @@ export default function Header() {
               </button>
 
               {open && (
-                <div className="absolute right-0 mt-2 w-48 bg-background border rounded-md shadow-md z-40">
+                <div className="absolute right-0 mt-2 w-52 bg-[#071226] border border-white/5 rounded-md shadow-lg z-40 text-white">
                   <div className="px-4 py-2 text-sm font-medium">
                     My Account
                   </div>
-                  <div className="border-t" />
+                  <div className="border-t border-white/5" />
                   <Link
                     to="/profile"
                     onClick={() => setOpen(false)}
-                    className="block px-4 py-2 hover:bg-accent/50"
+                    className="block px-4 py-2 hover:bg-white/5"
                   >
                     Profile
                   </Link>
                   <Link
                     to="/settings"
                     onClick={() => setOpen(false)}
-                    className="block px-4 py-2 hover:bg-accent/50"
+                    className="block px-4 py-2 hover:bg-white/5"
                   >
                     Settings
                   </Link>
@@ -92,18 +90,18 @@ export default function Header() {
                     <Link
                       to="/admin"
                       onClick={() => setOpen(false)}
-                      className="block px-4 py-2 hover:bg-accent/50"
+                      className="block px-4 py-2 hover:bg-white/5"
                     >
                       Admin Panel
                     </Link>
                   )}
-                  <div className="border-t" />
+                  <div className="border-t border-white/5" />
                   <button
                     onClick={() => {
                       setOpen(false);
                       logout();
                     }}
-                    className="w-full text-left px-4 py-2 text-red-600 hover:bg-accent/50"
+                    className="w-full text-left px-4 py-2 text-red-400 hover:bg-white/5"
                   >
                     Log out
                   </button>

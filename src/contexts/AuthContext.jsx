@@ -54,6 +54,22 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // refresh current user from API and update context/localStorage
+  const refreshUser = async () => {
+    try {
+      const userRes = await getUser();
+      const u = userRes.result ?? userRes;
+      setUser(u);
+      try {
+        localStorage.setItem("user", JSON.stringify(u));
+      } catch {}
+      return u;
+    } catch (err) {
+      setUser(null);
+      return null;
+    }
+  };
+
   // Logout xoá token, xoá user
   const logout = () => {
     localStorage.removeItem("token");
@@ -63,7 +79,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

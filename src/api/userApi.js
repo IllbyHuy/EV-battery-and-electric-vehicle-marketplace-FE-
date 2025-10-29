@@ -26,6 +26,21 @@ export const getUser = async () => {
   return data;
 };
 
+export const updateUser = async (payload) => {
+  const { data } = await api.put("/api/User/UpdateUser", payload);
+  return data;
+};
+
+export const sendOtpChangeEmail = async (payload) => {
+  const { data } = await api.post("/api/User/SendOtpChangeEmail", payload);
+  return data;
+};
+
+export const changeEmail = async (payload) => {
+  const { data } = await api.put("/api/User/ChangeEmail", payload);
+  return data;
+};
+
 export const userRegister = async (payload) => {
   const { data } = await api.post("/api/Auth/register", payload);
   return data;

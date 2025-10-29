@@ -64,3 +64,56 @@
   body { @apply bg-background text-foreground; }
 }
 
+/* Puzzle / fintech inspired theme utilities and animations */
+@layer components {
+  .fade-in {
+    animation: fadeInUp 600ms ease both;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .puzzle-hero {
+    /* purple -> pink -> blue gradient inspired by the reference */
+    background-image: linear-gradient(135deg, rgba(99,102,241,0.95) 0%, rgba(236,72,153,0.95) 45%, rgba(59,130,246,0.95) 100%);
+    color: white;
+  }
+
+  .puzzle-card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.4);
+  }
+
+  /* Obys-like dark theme utilities */
+  .obys-hero {
+    background: radial-gradient(800px 400px at 10% 10%, rgba(124,92,255,0.12), transparent 20%),
+                radial-gradient(600px 300px at 90% 80%, rgba(59,130,246,0.10), transparent 18%),
+                linear-gradient(180deg,#05060a,#071126 60%, #071226);
+    color: #e6eef8;
+  }
+
+  .obys-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 12px 30px rgba(2,6,23,0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  .accent-obys { color: #7c5cff; }
+  .bg-accent-obys { background: linear-gradient(90deg,#7c5cff,#4f46e5); color: white; }
+
+  .fade-in-slow { animation: fadeInUp 700ms cubic-bezier(.2,.9,.2,1) both; }
+}
+
+/* reveal-on-scroll helper */
+@layer components {
+  .reveal { opacity: 0; transform: translateY(12px); transition: opacity 600ms ease, transform 600ms ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+}
+

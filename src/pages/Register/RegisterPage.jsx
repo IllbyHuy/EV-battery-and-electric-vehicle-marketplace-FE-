@@ -124,10 +124,13 @@ export default function RegisterPage() {
 
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded shadow-lg p-6 w-full max-w-sm">
-            <h2 className="text-lg font-semibold mb-2">Verify OTP</h2>
-            <p className="text-sm mb-4">
-              Nhập mã OTP đã gửi tới: <strong>{pendingEmail}</strong>
+          <div className="obys-card rounded shadow-lg p-6 w-full max-w-sm text-white">
+            <h2 className="text-lg font-semibold mb-2 text-white">
+              Verify OTP
+            </h2>
+            <p className="text-sm mb-4 text-white/80">
+              Nhập mã OTP đã gửi tới:{" "}
+              <strong className="text-white">{pendingEmail}</strong>
             </p>
             <Input
               placeholder="Enter OTP"
@@ -148,7 +151,7 @@ export default function RegisterPage() {
               </Button>
               <Button
                 type="button"
-                className="bg-gray-200 text-black"
+                variant="ghost"
                 onClick={() => setShowOtpModal(false)}
               >
                 Cancel
