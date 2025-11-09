@@ -54,3 +54,31 @@ export const userLogin = async (payload) => {
   return data;
 };
 
+// Admin Battery APIs
+export const getAllBatteries = async () => {
+  const { data } = await api.get("/api/Battery/admin/all");
+  return data;
+};
+
+export const approveBattery = async (batteryId) => {
+  const { data } = await api.put(`/api/Battery/approve/${batteryId}`);
+  return data;
+};
+
+export const createBattery = async (batteryData) => {
+  // Request body should be an array: [{ brand, model, capacity, voltage }]
+  const { data } = await api.post("/api/Battery/Create", [batteryData]);
+  return data;
+};
+
+export const deleteBattery = async (batteryId) => {
+  const { data } = await api.delete(`/api/Battery/delete/${batteryId}`);
+  return data;
+};
+
+export const updateBattery = async (batteryId, batteryData) => {
+  // Request body: { brand, model, capacity, voltage }
+  const { data } = await api.put(`/api/Battery/update/${batteryId}`, batteryData);
+  return data;
+};
+
