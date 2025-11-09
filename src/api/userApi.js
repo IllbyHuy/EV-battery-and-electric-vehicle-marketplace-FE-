@@ -82,3 +82,31 @@ export const updateBattery = async (batteryId, batteryData) => {
   return data;
 };
 
+// Admin Vehicle APIs
+export const getAllVehicles = async () => {
+  const { data } = await api.get("/api/Vehicle/AdminGetAll");
+  return data;
+};
+
+export const createVehicle = async (vehicleData) => {
+  // Request body should be an array: [{ brand, model, startYear, endYear, compatibleBatteryIds }]
+  const { data } = await api.post("/api/Vehicle/Create", [vehicleData]);
+  return data;
+};
+
+export const approveVehicle = async (vehicleId) => {
+  const { data } = await api.put(`/api/Vehicle/Approve/${vehicleId}`);
+  return data;
+};
+
+export const updateVehicle = async (vehicleId, vehicleData) => {
+  // Request body: { brand, model, startYear, endYear, compatibleBatteryIds }
+  const { data } = await api.put(`/api/Vehicle/Update/${vehicleId}`, vehicleData);
+  return data;
+};
+
+export const deleteVehicle = async (vehicleId) => {
+  const { data } = await api.delete(`/api/Vehicle/Delete/${vehicleId}`);
+  return data;
+};
+

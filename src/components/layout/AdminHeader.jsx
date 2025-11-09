@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Gauge, Users, DollarSign, Clipboard, BatteryCharging } from "lucide-react";
+import { Gauge, Users, DollarSign, Clipboard, BatteryCharging, Car } from "lucide-react";
 
 export default function AdminHeader() {
   const items = [
     { to: "/admin/dashboard", label: "Dashboard", icon: Gauge },
     { to: "/admin/batteries", label: "Batteries", icon: BatteryCharging },
+    { to: "/admin/vehicles", label: "Vehicles", icon: Car },
     { to: "/admin/commissions", label: "Commissions", icon: DollarSign },
     { to: "/admin/transactions", label: "Transactions", icon: Clipboard },
     { to: "/admin/accounts", label: "Accounts", icon: Users },
