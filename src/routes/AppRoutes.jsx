@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { RequireAdmin, RequireUser, RequireAuth, RoleRedirect } from "./guards";
 import MainLayout from "../layouts/MainLayout";
 import HomePage from "../pages/Home/HomePage";
 import LoginPage from "../pages/Login/LoginPage";
@@ -16,33 +17,94 @@ import HistoryPage from "../pages/History/HistoryPage";
 import AdminTransactionsPage from "../pages/Admin/AdminTransactionsPage";
 import AdminCommissionsPage from "../pages/Admin/AdminCommissionsPage";
 import AdminDashboardPage from "../pages/Admin/AdminDashboardPage";
+import AdminAccountsPage from "../pages/Admin/AdminAccountsPage";
+import AdminLayout from "../layouts/AdminLayout";
 import CheckoutPage from "../pages/Payment/CheckoutPage";
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public / main site routes use MainLayout */}
         <Route element={<MainLayout />}>
+          {/* Public routes - no authentication required */}
           <Route index element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/listings/new" element={<NewListingPage />} />
-          <Route path="/ai-price" element={<AiPricePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/product/:id" element={<ProductPage />} />
-          <Route path="/reviews" element={<ReviewsPage />} />
-          <Route path="/history" element={<HistoryPage />} />
+          
+          {/* Role-based redirect utility route */}
+          <Route path="/go" element={<RoleRedirect />} />
+
+          {/* Protected routes - require authentication (any authenticated user) */}
           <Route
-            path="/admin/transactions"
-            element={<AdminTransactionsPage />}
+            path="/profile"
+            element={
+              <RequireAuth>
+                <ProfilePage />
+              </RequireAuth>
+            }
           />
-          <Route path="/admin/commissions" element={<AdminCommissionsPage />} />
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-          <Route path="/payment/checkout" element={<CheckoutPage />} />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <SettingsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/reviews"
+            element={
+              <RequireAuth>
+                <ReviewsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <RequireAuth>
+                <HistoryPage />
+              </RequireAuth>
+            }
+          />
+
+          {/* User-only routes - require role 2 or "User" */}
+          <Route path="/listings" element={<RequireUser />}>
+            <Route path="new" element={<NewListingPage />} />
+          </Route>
+          <Route
+            path="/ai-price"
+            element={
+              <RequireUser>
+                <AiPricePage />
+              </RequireUser>
+            }
+          />
+          <Route
+            path="/payment/checkout"
+            element={
+              <RequireUser>
+                <CheckoutPage />
+              </RequireUser>
+            }
+          />
+
           <Route path="*" element={<NotFound />} />
+        </Route>
+
+        {/* Admin routes - require role 1 or "Admin" */}
+        <Route path="/admin" element={<RequireAdmin />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="commissions" element={<AdminCommissionsPage />} />
+            <Route path="transactions" element={<AdminTransactionsPage />} />
+            <Route path="accounts" element={<AdminAccountsPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

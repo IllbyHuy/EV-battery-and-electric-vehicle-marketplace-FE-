@@ -20,6 +20,7 @@
     "format.fix": "prettier --write ."
   },
   "dependencies": {
+    "antd": "^5.28.0",
     "axios": "^1.7.7",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
