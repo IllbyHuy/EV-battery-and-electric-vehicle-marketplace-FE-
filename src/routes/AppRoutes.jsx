@@ -18,6 +18,7 @@ import AdminTransactionsPage from "../pages/Admin/AdminTransactionsPage";
 import AdminCommissionsPage from "../pages/Admin/AdminCommissionsPage";
 import AdminDashboardPage from "../pages/Admin/AdminDashboardPage";
 import AdminAccountsPage from "../pages/Admin/AdminAccountsPage";
+import AdminBatteriesPage from "../pages/Admin/AdminBatteriesPage";
 import AdminLayout from "../layouts/AdminLayout";
 import CheckoutPage from "../pages/Payment/CheckoutPage";
 
@@ -101,6 +102,7 @@ export default function AppRoutes() {
           <Route element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="batteries" element={<AdminBatteriesPage />} />
             <Route path="commissions" element={<AdminCommissionsPage />} />
             <Route path="transactions" element={<AdminTransactionsPage />} />
             <Route path="accounts" element={<AdminAccountsPage />} />
