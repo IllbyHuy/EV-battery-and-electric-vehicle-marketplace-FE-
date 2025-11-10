@@ -15,135 +15,14 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { BatteryCharging, Car, ChevronRight, Star, Zap } from "lucide-react";
-
-const listings = [
-  {
-    id: "1",
-    type: "car",
-    title: "Tesla Model 3 Long Range",
-    price: 38490,
-    spec: "358 mi • 2022 • AWD",
-    rating: 4.8,
-    image: "/placeholder.svg",
-    tag: "Trending",
-  },
-  {
-    id: "2",
-    type: "car",
-    title: "Hyundai IONIQ 5 Limited",
-    price: 32950,
-    spec: "303 mi • 2023 • RWD",
-    rating: 4.6,
-    image: "/placeholder.svg",
-    tag: "Great value",
-  },
-  {
-    id: "3",
-    type: "battery",
-    title: "LG Chem EV Battery 64kWh",
-    price: 6200,
-    spec: "64 kWh • Grade A • 98% SOH",
-    rating: 4.7,
-    image: "/placeholder.svg",
-    tag: "Refurbished",
-  },
-  {
-    id: "4",
-    type: "battery",
-    title: "CATL LFP Pack 75kWh",
-    price: 7100,
-    spec: "75 kWh • New • 0 cycles",
-    rating: 4.9,
-    image: "/placeholder.svg",
-    tag: "New",
-  },
-  {
-    id: "5",
-    type: "car",
-    title: "Nissan Leaf Plus",
-    price: 18950,
-    spec: "215 mi • 2021 • FWD",
-    rating: 4.3,
-    image: "/placeholder.svg",
-    tag: "Popular",
-  },
-  {
-    id: "6",
-    type: "battery",
-    title: "Samsung SDI Pack 50kWh",
-    price: 5200,
-    spec: "50 kWh • Refurbished • 95% SOH",
-    rating: 4.5,
-    image: "/placeholder.svg",
-    tag: "Refurbished",
-  },
-  {
-    id: "7",
-    type: "car",
-    title: "Ford Mustang Mach-E",
-    price: 45900,
-    spec: "300 mi • 2022 • AWD",
-    rating: 4.7,
-    image: "/placeholder.svg",
-    tag: "Trending",
-  },
-  {
-    id: "8",
-    type: "car",
-    title: "Kia EV6 GT-Line",
-    price: 39990,
-    spec: "310 mi • 2023 • RWD",
-    rating: 4.6,
-    image: "/placeholder.svg",
-    tag: "Great value",
-  },
-  {
-    id: "9",
-    type: "battery",
-    title: "Panasonic 70kWh Module",
-    price: 6800,
-    spec: "70 kWh • New • OEM",
-    rating: 4.8,
-    image: "/placeholder.svg",
-    tag: "New",
-  },
-  {
-    id: "10",
-    type: "car",
-    title: "Chevrolet Bolt EUV",
-    price: 21900,
-    spec: "247 mi • 2022 • FWD",
-    rating: 4.2,
-    image: "/placeholder.svg",
-    tag: "Popular",
-  },
-  {
-    id: "11",
-    type: "battery",
-    title: "Used EV Cells - Lot of 10",
-    price: 1200,
-    spec: "Assorted cells • Used",
-    rating: 4.0,
-    image: "/placeholder.svg",
-    tag: "Wholesale",
-  },
-  {
-    id: "12",
-    type: "car",
-    title: "BMW i4 eDrive40",
-    price: 52900,
-    spec: "300 mi • 2024 • RWD",
-    rating: 4.7,
-    image: "/placeholder.svg",
-    tag: "Premium",
-  },
-];
+import { getAllListings, setAuthToken } from "../../api/ListingApi";
 
 // Use native selects for reliability
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [type, setType] = React.useState("Cars");
   const [brand, setBrand] = React.useState("Brand / Manufacturer");
   const [price, setPrice] = React.useState("Price range");
@@ -161,6 +40,105 @@ export default function HomePage() {
   const [aiMileage, setAiMileage] = React.useState(0);
   const [aiCondition, setAiCondition] = React.useState("Good");
   const [aiEstimate, setAiEstimate] = React.useState(null);
+
+  // Listings from API
+  const [listings, setListings] = React.useState([]);
+  const [loadingListings, setLoadingListings] = React.useState(true);
+  const [listingsError, setListingsError] = React.useState(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // set Authorization header if token exists in storage
+        const token =
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("token") ||
+          sessionStorage.getItem("authToken");
+        if (token) setAuthToken(token);
+
+        const data = await getAllListings();
+        if (!mounted) return;
+
+        // API có thể trả trực tiếp array hoặc object wrapper { result: [...] }
+        const items = Array.isArray(data) ? data : data?.result ?? data?.data ?? [];
+
+        const normalized = (items || []).map((item) => {
+          // Detect if listing contains batteries or vehicles
+          const firstBattery = item.listingBatteries && item.listingBatteries[0];
+          const firstVehicle = item.listingVehicles && item.listingVehicles[0];
+
+          const isBattery = Boolean(firstBattery) || (item.itemType && item.itemType.toLowerCase().includes("battery"));
+          const relatedId = isBattery ? firstBattery?.batteryId : firstVehicle?.vehicleId;
+          const relatedKind = isBattery ? "battery" : firstVehicle ? "vehicle" : null;
+
+          const image =
+            firstBattery?.imgs ??
+            firstVehicle?.imgs ??
+            (Array.isArray(item.images) && item.images[0]) ??
+            item.imageUrl ??
+            item.image ??
+            "/placeholder.svg";
+
+          const price =
+            firstBattery?.price ??
+            firstBattery?.suggestedPrice ??
+            item.price ??
+            item.amount ??
+            0;
+
+          const title =
+            item.title ??
+            (isBattery ? `Battery ${relatedId ?? ""}` : firstVehicle ? `Vehicle ${relatedId ?? ""}` : item.model) ??
+            "Untitled";
+
+          // Build a compact spec string (health/price for battery, fallback for vehicle)
+          const specParts = [];
+          if (isBattery && firstBattery) {
+            if (firstBattery.health != null) specParts.push(`Health: ${firstBattery.health}%`);
+            if (firstBattery.price != null) specParts.push(`Price: ${Number(firstBattery.price).toLocaleString()}`);
+          } else {
+            if (item.range) specParts.push(`${item.range} mi`);
+            if (item.year) specParts.push(String(item.year));
+            if (item.drive) specParts.push(item.drive);
+          }
+          const fallbackParts = specParts.filter(Boolean).join(" • ");
+          const fallback = fallbackParts || item.description || "";
+          const spec = item.spec ?? fallback;
+
+          return {
+            id: item.id ?? item.listingId ?? item._id ?? String(Math.random()),
+            type: isBattery ? "battery" : "car",
+            title,
+            price,
+            spec,
+            rating: item.rating ?? 0,
+            image,
+            tag: item.tag ?? item.status ?? "",
+            // New fields: use these ids to fetch brand/model on detail page
+            relatedId,
+            relatedKind,
+          };
+        });
+
+        setListings(normalized);
+      } catch (err) {
+        const status = err?.response?.status;
+        if (status === 401) {
+          // unauthorized: show message and optionally redirect to login
+          setListingsError("Unauthorized. Please log in.");
+          navigate("/login");
+        } else {
+          setListingsError(err?.message || "Failed to load listings");
+        }
+      } finally {
+        setLoadingListings(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="obys-hero min-h-screen">
@@ -190,7 +168,8 @@ export default function HomePage() {
 
             {/* Quick features */}
             <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
+            {[
+
                 { icon: Car, label: "Verified sellers" },
                 { icon: BatteryCharging, label: "Battery health" },
                 { icon: Star, label: "Ratings & reviews" },
@@ -447,63 +426,68 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {listings.map((item) => (
-              <Card
-                key={item.id}
-                className="group overflow-hidden transition-shadow hover:shadow-md"
-              >
-                <div className="relative aspect-[4/3] bg-muted/40">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute left-3 top-3">
-                    <Badge className="shadow-sm">{item.tag}</Badge>
-                  </div>
-                </div>
-                <CardContent className="space-y-2 pt-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {item.type === "car" ? (
-                          <Car className="h-3.5 w-3.5" />
-                        ) : (
-                          <BatteryCharging className="h-3.5 w-3.5" />
-                        )}
-                        {item.type === "car" ? "EV" : "Battery"}
-                      </div>
-                      <h3 className="line-clamp-2 font-semibold leading-tight">
-                        {item.title}
-                      </h3>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xl font-bold">
-                        {item.price.toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                        })}
-                      </div>
-                      <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                        <Star className="h-3 w-3 text-yellow-500" />{" "}
-                        {item.rating}
+          {/* replaced static grid with API-driven render */}
+          {loadingListings ? (
+            <div className="text-center text-sm text-muted-foreground">Loading listings…</div>
+          ) : listingsError ? (
+            <div className="text-center text-sm text-red-400">{listingsError}</div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {listings.map((item) => (
+                <Link
+                  to={`/listings/${item.id}`}
+                  key={item.id}
+                  className="no-underline"
+                >
+                  <Card className="group overflow-hidden transition-shadow hover:shadow-md">
+                    <div className="relative aspect-[4/3] bg-muted/40">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute left-3 top-3">
+                        <Badge className="shadow-sm">{item.tag}</Badge>
                       </div>
                     </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{item.spec}</p>
-                  <div className="pt-1">
-                    <Link
-                      to={`/product/${item.id}`}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      View details
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardContent className="space-y-2 pt-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {item.type === "car" ? (
+                              <Car className="h-3.5 w-3.5" />
+                            ) : (
+                              <BatteryCharging className="h-3.5 w-3.5" />
+                            )}
+                            {item.type === "car" ? "EV" : "Battery"}
+                          </div>
+                          <h3 className="line-clamp-2 font-semibold leading-tight">
+                            {item.title}
+                          </h3>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold">
+                            {Number(item.price).toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            })}
+                          </div>
+                          <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                            <Star className="h-3 w-3 text-yellow-500" />{" "}
+                            {item.rating}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{item.spec}</p>
+                      <div className="pt-1">
+                        <span className="text-sm text-primary hover:underline">View details</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </Reveal>
 
