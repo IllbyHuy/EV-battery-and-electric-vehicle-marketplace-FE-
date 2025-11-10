@@ -164,9 +164,9 @@ export default function NewListing() {
         created?.id ?? created?.listingId ?? created?._id ?? created?.result?.[0]?.id;
       if (id) {
         // navigate to detail of created listing
-        navigate(`/product/${id}`);
+        navigate(`/listing/${id}`);
       } else {
-        navigate("/listings");
+        navigate("/");
       }
     } catch (err) {
       setError(err?.response?.data?.errorMessage || err.message || "Failed to create listing");
