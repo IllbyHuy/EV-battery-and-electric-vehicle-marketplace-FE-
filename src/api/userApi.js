@@ -82,6 +82,11 @@ export const updateBattery = async (batteryId, batteryData) => {
   return data;
 };
 
+export const getBatteryPriceSuggestion = async (batteryData) => {
+  const { data } = await api.post("/Battery_Price_Suggestion", batteryData);
+  return data;
+};
+
 // Admin Vehicle APIs
 export const getAllVehicles = async () => {
   const { data } = await api.get("/api/Vehicle/AdminGetAll");
