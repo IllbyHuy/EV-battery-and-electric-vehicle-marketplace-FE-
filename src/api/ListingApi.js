@@ -60,3 +60,36 @@ export const deleteListing = async (listingId) => {
   const { data } = await api.delete(`/api/Listing/delete/${listingId}`);
   return data;
 };
+
+// Get listing details by id
+export const getListingDetails = async (listingId) => {
+  try {
+    const { data } = await api.get(`/api/Listing/GetByListingById/${listingId}`);
+    return data;
+  } catch (err) {
+    console.error("Failed to fetch listing details:", err);
+    throw err;
+  }
+};
+
+// Battery detail by id
+export const getBatteryById = async (batteryId) => {
+  try {
+    const { data } = await api.get(`/api/Battery/GetById/${batteryId}`);
+    return data;
+  } catch (err) {
+    console.error("Failed to fetch battery:", err);
+    return null;
+  }
+};
+
+// Vehicle detail by id
+export const getVehicleById = async (vehicleId) => {
+  try {
+    const { data } = await api.get(`/api/Vehicle/GetById/${vehicleId}`);
+    return data;
+  } catch (err) {
+    console.error("Failed to fetch vehicle:", err);
+    return null;
+  }
+};

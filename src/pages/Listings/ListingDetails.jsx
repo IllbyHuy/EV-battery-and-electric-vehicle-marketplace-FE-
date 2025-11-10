@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getListingDetails, getBatteryById, getVehicleById } from "../../api/ListingApi";
+import { getListingById, getBatteryById, getVehicleById } from "../../api/ListingApi";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 
@@ -29,7 +29,7 @@ export default function ListingDetails() {
       setLoading(true);
       setError(null);
       try {
-        const raw = await getListingDetails(id);
+        const raw = await getListingById(id);
         const item = raw?.result ?? raw?.data ?? raw;
         if (!item) throw new Error("Listing not found");
 
