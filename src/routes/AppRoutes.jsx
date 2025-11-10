@@ -22,7 +22,7 @@ import AdminBatteriesPage from "../pages/Admin/AdminBatteriesPage";
 import AdminVehiclesPage from "../pages/Admin/AdminVehiclesPage";
 import AdminLayout from "../layouts/AdminLayout";
 import CheckoutPage from "../pages/Payment/CheckoutPage";
-
+import NewListing from "../pages/Listings/NewListing";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -76,7 +76,7 @@ export default function AppRoutes() {
 
           {/* User-only routes - require role 2 or "User" */}
           <Route path="/listings" element={<RequireUser />}>
-            <Route path="new" element={<NewListingPage />} />
+            <Route path="new" element={<NewListing />} />
           </Route>
           <Route
             path="/ai-price"

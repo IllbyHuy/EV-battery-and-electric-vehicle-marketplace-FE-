@@ -15,13 +15,14 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { BatteryCharging, Car, ChevronRight, Star, Zap } from "lucide-react";
-import { getAllListings } from "../../api/ListingApi"; // <-- added
+import { getAllListings, setAuthToken } from "../../api/ListingApi";
 
 // Use native selects for reliability
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [type, setType] = React.useState("Cars");
   const [brand, setBrand] = React.useState("Brand / Manufacturer");
   const [price, setPrice] = React.useState("Price range");
@@ -49,46 +50,87 @@ export default function HomePage() {
     let mounted = true;
     (async () => {
       try {
+        // set Authorization header if token exists in storage
+        const token =
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("token") ||
+          sessionStorage.getItem("authToken");
+        if (token) setAuthToken(token);
+
         const data = await getAllListings();
         if (!mounted) return;
-        // normalize API shape to the UI shape expected below
-        const normalized = (data || []).map((item) => {
-          const fallbackParts = [
-            item.range ? `${item.range} mi` : null,
-            item.year ? `${item.year}` : null,
-            item.drive ? item.drive : null,
-          ]
-            .filter(Boolean)
-            .join(" • ");
 
+        // API có thể trả trực tiếp array hoặc object wrapper { result: [...] }
+        const items = Array.isArray(data) ? data : data?.result ?? data?.data ?? [];
+
+        const normalized = (items || []).map((item) => {
+          // Detect if listing contains batteries or vehicles
+          const firstBattery = item.listingBatteries && item.listingBatteries[0];
+          const firstVehicle = item.listingVehicles && item.listingVehicles[0];
+
+          const isBattery = Boolean(firstBattery) || (item.itemType && item.itemType.toLowerCase().includes("battery"));
+          const relatedId = isBattery ? firstBattery?.batteryId : firstVehicle?.vehicleId;
+          const relatedKind = isBattery ? "battery" : firstVehicle ? "vehicle" : null;
+
+          const image =
+            firstBattery?.imgs ??
+            firstVehicle?.imgs ??
+            (Array.isArray(item.images) && item.images[0]) ??
+            item.imageUrl ??
+            item.image ??
+            "/placeholder.svg";
+
+          const price =
+            firstBattery?.price ??
+            firstBattery?.suggestedPrice ??
+            item.price ??
+            item.amount ??
+            0;
+
+          const title =
+            item.title ??
+            (isBattery ? `Battery ${relatedId ?? ""}` : firstVehicle ? `Vehicle ${relatedId ?? ""}` : item.model) ??
+            "Untitled";
+
+          // Build a compact spec string (health/price for battery, fallback for vehicle)
+          const specParts = [];
+          if (isBattery && firstBattery) {
+            if (firstBattery.health != null) specParts.push(`Health: ${firstBattery.health}%`);
+            if (firstBattery.price != null) specParts.push(`Price: ${Number(firstBattery.price).toLocaleString()}`);
+          } else {
+            if (item.range) specParts.push(`${item.range} mi`);
+            if (item.year) specParts.push(String(item.year));
+            if (item.drive) specParts.push(item.drive);
+          }
+          const fallbackParts = specParts.filter(Boolean).join(" • ");
           const fallback = fallbackParts || item.description || "";
+          const spec = item.spec ?? fallback;
 
           return {
-            id:
-              item.id ??
-              item.listingId ??
-              item._id ??
-              String(item.id ?? item.listingId ?? item._id ?? Math.random()),
-            type:
-              (item.type && item.type.toLowerCase()) ||
-              (item.category && item.category.toLowerCase()) ||
-              (item.isBattery ? "battery" : "car") ||
-              "car",
-            title: item.title ?? item.name ?? item.model ?? "Untitled",
-            price: item.price ?? item.amount ?? 0,
-            spec: item.spec ?? fallback,
+            id: item.id ?? item.listingId ?? item._id ?? String(Math.random()),
+            type: isBattery ? "battery" : "car",
+            title,
+            price,
+            spec,
             rating: item.rating ?? 0,
-            image:
-              (Array.isArray(item.images) && item.images[0]) ??
-              item.imageUrl ??
-              item.image ??
-              "/placeholder.svg",
+            image,
             tag: item.tag ?? item.status ?? "",
+            // New fields: use these ids to fetch brand/model on detail page
+            relatedId,
+            relatedKind,
           };
         });
+
         setListings(normalized);
       } catch (err) {
-        setListingsError(err?.message || "Failed to load listings");
+        const status = err?.response?.status;
+        if (status === 401) {
+          // unauthorized: show message and optionally redirect to login
+          setListingsError("Unauthorized. Please log in.");
+          navigate("/login");
+        } else {
+          setListingsError(err?.message || "Failed to load listings");
+        }
       } finally {
         setLoadingListings(false);
       }
@@ -126,7 +168,7 @@ export default function HomePage() {
 
             {/* Quick features */}
             <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
+             {[
 
                 { icon: Car, label: "Verified sellers" },
                 { icon: BatteryCharging, label: "Battery health" },
