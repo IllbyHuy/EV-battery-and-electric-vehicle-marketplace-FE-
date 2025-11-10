@@ -23,6 +23,7 @@ import AdminVehiclesPage from "../pages/Admin/AdminVehiclesPage";
 import AdminLayout from "../layouts/AdminLayout";
 import CheckoutPage from "../pages/Payment/CheckoutPage";
 import NewListing from "../pages/Listings/NewListing";
+import ListingDetails from "../pages/Listings/ListingDetails";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -37,6 +38,8 @@ export default function AppRoutes() {
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/product/:id" element={<ProductPage />} />
           
+          <Route path="/listings/:id" element={<ListingDetails />} />
+
           {/* Role-based redirect utility route */}
           <Route path="/go" element={<RoleRedirect />} />
 

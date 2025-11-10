@@ -168,7 +168,7 @@ export default function HomePage() {
 
             {/* Quick features */}
             <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-             {[
+            {[
 
                 { icon: Car, label: "Verified sellers" },
                 { icon: BatteryCharging, label: "Battery health" },
@@ -434,59 +434,57 @@ export default function HomePage() {
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {listings.map((item) => (
-                <Card
+                <Link
+                  to={`/listings/${item.id}`}
                   key={item.id}
-                  className="group overflow-hidden transition-shadow hover:shadow-md"
+                  className="no-underline"
                 >
-                  <div className="relative aspect-[4/3] bg-muted/40">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute left-3 top-3">
-                      <Badge className="shadow-sm">{item.tag}</Badge>
-                    </div>
-                  </div>
-                  <CardContent className="space-y-2 pt-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {item.type === "car" ? (
-                            <Car className="h-3.5 w-3.5" />
-                          ) : (
-                            <BatteryCharging className="h-3.5 w-3.5" />
-                          )}
-                          {item.type === "car" ? "EV" : "Battery"}
-                        </div>
-                        <h3 className="line-clamp-2 font-semibold leading-tight">
-                          {item.title}
-                        </h3>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xl font-bold">
-                          {Number(item.price).toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          })}
-                        </div>
-                        <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                          <Star className="h-3 w-3 text-yellow-500" />{" "}
-                          {item.rating}
-                        </div>
+                  <Card className="group overflow-hidden transition-shadow hover:shadow-md">
+                    <div className="relative aspect-[4/3] bg-muted/40">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute left-3 top-3">
+                        <Badge className="shadow-sm">{item.tag}</Badge>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{item.spec}</p>
-                    <div className="pt-1">
-                      <Link
-                        to={`/product/${item.id}`}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        View details
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <CardContent className="space-y-2 pt-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {item.type === "car" ? (
+                              <Car className="h-3.5 w-3.5" />
+                            ) : (
+                              <BatteryCharging className="h-3.5 w-3.5" />
+                            )}
+                            {item.type === "car" ? "EV" : "Battery"}
+                          </div>
+                          <h3 className="line-clamp-2 font-semibold leading-tight">
+                            {item.title}
+                          </h3>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold">
+                            {Number(item.price).toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            })}
+                          </div>
+                          <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                            <Star className="h-3 w-3 text-yellow-500" />{" "}
+                            {item.rating}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{item.spec}</p>
+                      <div className="pt-1">
+                        <span className="text-sm text-primary hover:underline">View details</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}
