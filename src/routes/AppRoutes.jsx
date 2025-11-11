@@ -14,9 +14,6 @@ import ComparePage from "../pages/Compare/ComparePage";
 import ProductPage from "../pages/Product/ProductPage";
 import ReviewsPage from "../pages/Reviews/ReviewsPage";
 import HistoryPage from "../pages/History/HistoryPage";
-import AdminTransactionsPage from "../pages/Admin/AdminTransactionsPage";
-import AdminCommissionsPage from "../pages/Admin/AdminCommissionsPage";
-import AdminDashboardPage from "../pages/Admin/AdminDashboardPage";
 import AdminAccountsPage from "../pages/Admin/AdminAccountsPage";
 import AdminBatteriesPage from "../pages/Admin/AdminBatteriesPage";
 import AdminVehiclesPage from "../pages/Admin/AdminVehiclesPage";
@@ -104,12 +101,10 @@ export default function AppRoutes() {
         {/* Admin routes - require role 1 or "Admin" */}
         <Route path="/admin" element={<RequireAdmin />}>
           <Route element={<AdminLayout />}>
-            <Route index element={<AdminDashboardPage />} />
-            <Route path="dashboard" element={<AdminDashboardPage />} />
+            {/* Mặc định trỏ vào batteries */}
+            <Route index element={<AdminBatteriesPage />} />
             <Route path="batteries" element={<AdminBatteriesPage />} />
             <Route path="vehicles" element={<AdminVehiclesPage />} />
-            <Route path="commissions" element={<AdminCommissionsPage />} />
-            <Route path="transactions" element={<AdminTransactionsPage />} />
             <Route path="accounts" element={<AdminAccountsPage />} />
           </Route>
         </Route>

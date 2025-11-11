@@ -11,6 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import { storage } from "../../config/firebase-config";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function AdminBatteriesPage() {
   const [batteries, setBatteries] = useState([]);
@@ -29,7 +31,11 @@ export default function AdminBatteriesPage() {
     model: "",
     capacity: "",
     voltage: "",
+    imgs: "",
   });
+  const [createImageFiles, setCreateImageFiles] = useState([]);
+  const [editImageFiles, setEditImageFiles] = useState([]);
+  const [editImageUrls, setEditImageUrls] = useState([]);
 
   useEffect(() => {
     fetchBatteries();
@@ -53,6 +59,17 @@ export default function AdminBatteriesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Upload ảnh lên Firebase Storage và trả về danh sách URL
+  const uploadImagesAndGetUrls = async (files, folder = "battery-images") => {
+    if (!files || files.length === 0) return [];
+    const tasks = files.map(async (file) => {
+      const fileRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
+      await uploadBytes(fileRef, file);
+      return await getDownloadURL(fileRef);
+    });
+    return Promise.all(tasks);
   };
 
   // Handle approve battery
@@ -101,14 +118,22 @@ export default function AdminBatteriesPage() {
         model: batteryForm.model.trim(),
         capacity: Number(batteryForm.capacity),
         voltage: batteryForm.voltage.trim(),
+        imgs: "",
       };
+
+      // Upload ảnh nếu có
+      const uploaded = await uploadImagesAndGetUrls(createImageFiles, "battery-images");
+      if (uploaded.length > 0) {
+        batteryData.imgs = uploaded.join(",");
+      }
 
       const response = await createBattery(batteryData);
 
       // Handle response structure: { statusCode, isSuccess, errorMessage, result }
       if (response.isSuccess) {
         // Reset form
-        setBatteryForm({ brand: "", model: "", capacity: "", voltage: "" });
+        setBatteryForm({ brand: "", model: "", capacity: "", voltage: "", imgs: "" });
+        setCreateImageFiles([]);
         setShowCreateForm(false);
         // Reload battery list after successful creation
         await fetchBatteries();
@@ -164,7 +189,13 @@ export default function AdminBatteriesPage() {
       model: battery.model || "",
       capacity: battery.capacity?.toString() || "",
       voltage: battery.voltage || "",
+      imgs: typeof battery.imgs === "string" ? battery.imgs : Array.isArray(battery.imgs) ? battery.imgs.join(",") : "",
     });
+    const urls = typeof battery.imgs === "string"
+      ? battery.imgs.split(",").map((s) => s.trim()).filter(Boolean)
+      : Array.isArray(battery.imgs) ? battery.imgs : [];
+    setEditImageUrls(urls);
+    setEditImageFiles([]);
   };
 
   // Handle update battery
@@ -188,7 +219,17 @@ export default function AdminBatteriesPage() {
         model: batteryForm.model.trim(),
         capacity: Number(batteryForm.capacity),
         voltage: batteryForm.voltage.trim(),
+        imgs: batteryForm.imgs || "",
       };
+
+      // Nếu có upload mới, upload và merge với URL cũ
+      if (editImageFiles.length > 0) {
+        const newUrls = await uploadImagesAndGetUrls(editImageFiles, "battery-images");
+        const finalUrls = [...(editImageUrls || []), ...newUrls];
+        batteryData.imgs = finalUrls.join(",");
+      } else if (editImageUrls && editImageUrls.length >= 0) {
+        batteryData.imgs = editImageUrls.join(",");
+      }
 
       const response = await updateBattery(editingBattery.id, batteryData);
 
@@ -196,7 +237,9 @@ export default function AdminBatteriesPage() {
       if (response.isSuccess) {
         // Reset form and close edit dialog
         setEditingBattery(null);
-        setBatteryForm({ brand: "", model: "", capacity: "", voltage: "" });
+        setBatteryForm({ brand: "", model: "", capacity: "", voltage: "", imgs: "" });
+        setEditImageFiles([]);
+        setEditImageUrls([]);
         // Reload battery list after successful update
         await fetchBatteries();
       } else {
@@ -227,6 +270,14 @@ export default function AdminBatteriesPage() {
 
     return matchesSearch && matchesFilter;
   });
+
+  const getFirstImage = (imgs) => {
+    if (!imgs) return "/placeholder.svg";
+    if (Array.isArray(imgs)) return imgs[0] || "/placeholder.svg";
+    // imgs có thể là chuỗi với nhiều URL, phân tách bởi dấu phẩy
+    const first = String(imgs).split(",").map((s) => s.trim()).filter(Boolean)[0];
+    return first || "/placeholder.svg";
+  };
 
   return (
     <div className="space-y-6 p-6">
@@ -323,13 +374,36 @@ export default function AdminBatteriesPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Ảnh pin (có thể chọn nhiều)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setCreateImageFiles(files);
+                  }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                {createImageFiles && createImageFiles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {createImageFiles.map((f, i) => (
+                      <img key={i} src={URL.createObjectURL(f)} alt={f.name} className="w-20 h-20 object-cover rounded-md" />
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
                     setShowCreateForm(false);
-                    setBatteryForm({ brand: "", model: "", capacity: "", voltage: "" });
+                    setBatteryForm({ brand: "", model: "", capacity: "", voltage: "", imgs: "" });
+                    setCreateImageFiles([]);
                     setError(null);
                   }}
                   disabled={creating}
@@ -423,13 +497,54 @@ export default function AdminBatteriesPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Ảnh pin
+                </label>
+                {editImageUrls && editImageUrls.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {editImageUrls.map((url, i) => (
+                      <div key={i} className="relative">
+                        <img src={url} alt={`battery-${i}`} className="w-20 h-20 object-cover rounded-md" />
+                        <button
+                          type="button"
+                          onClick={() => setEditImageUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                          title="Xóa ảnh"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setEditImageFiles(files);
+                  }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                {editImageFiles && editImageFiles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {editImageFiles.map((f, i) => (
+                      <img key={i} src={URL.createObjectURL(f)} alt={f.name} className="w-20 h-20 object-cover rounded-md" />
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
                     setEditingBattery(null);
-                    setBatteryForm({ brand: "", model: "", capacity: "", voltage: "" });
+                    setBatteryForm({ brand: "", model: "", capacity: "", voltage: "", imgs: "" });
+                    setEditImageFiles([]);
+                    setEditImageUrls([]);
                     setError(null);
                   }}
                   disabled={updatingIds.has(editingBattery.id)}
@@ -546,11 +661,12 @@ export default function AdminBatteriesPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
+                      <th className="text-left p-3 text-sm font-semibold">Ảnh</th>
                       <th className="text-left p-3 text-sm font-semibold">Brand</th>
                       <th className="text-left p-3 text-sm font-semibold">Model</th>
                       <th className="text-left p-3 text-sm font-semibold">Capacity</th>
                       <th className="text-left p-3 text-sm font-semibold">Voltage</th>
-                      <th className="text-center p-3 text-sm font-semibold">Listings</th>
+                      {/* <th className="text-center p-3 text-sm font-semibold">Listings</th> */}
                       <th className="text-center p-3 text-sm font-semibold">Trạng thái</th>
                       <th className="text-center p-3 text-sm font-semibold">Action</th>
                     </tr>
@@ -561,15 +677,23 @@ export default function AdminBatteriesPage() {
                         key={battery.id}
                         className="border-b hover:bg-muted/50 transition-colors"
                       >
+                        <td className="p-3">
+                          <img
+                            src={getFirstImage(battery.imgs)}
+                            alt={`${battery.brand || ""} ${battery.model || ""}`.trim() || "battery"}
+                            className="w-14 h-14 object-cover rounded-md border"
+                            onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
+                          />
+                        </td>
                         <td className="p-3 text-sm font-medium">{battery.brand || "—"}</td>
                         <td className="p-3 text-sm">{battery.model || "—"}</td>
                         <td className="p-3 text-sm">
                           {battery.capacity ? `${battery.capacity} kWh` : "—"}
                         </td>
                         <td className="p-3 text-sm">{battery.voltage || "—"}</td>
-                        <td className="p-3 text-sm text-center">
+                        {/* <td className="p-3 text-sm text-center">
                           <Badge variant="secondary">{battery.listingCount || 0}</Badge>
-                        </td>
+                        </td> */}
                         <td className="p-3 text-center">
                           {battery.isAproved ? (
                             <Badge className="bg-green-600 hover:bg-green-700">

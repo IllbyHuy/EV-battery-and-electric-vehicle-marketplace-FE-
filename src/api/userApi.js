@@ -41,6 +41,12 @@ export const changeEmail = async (payload) => {
   return data;
 };
 
+// Admin - Users
+export const getAllUsers = async () => {
+  const { data } = await api.get("/api/User/GetAll");
+  return data;
+};
+
 export const userRegister = async (payload) => {
   const { data } = await api.post("/api/Auth/register", payload);
   return data;
