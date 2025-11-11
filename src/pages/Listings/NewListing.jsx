@@ -6,6 +6,17 @@ import { useNavigate } from "react-router-dom";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../../config/firebase-config";
 
+// Hàm upload nhiều ảnh và trả về URLs
+const uploadImagesAndGetUrls = async (files, folder = "battery-images") => {
+  if (!files || files.length === 0) return [];
+  const tasks = files.map(async (file) => {
+    const fileRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
+    await uploadBytes(fileRef, file);
+    return await getDownloadURL(fileRef);
+  });
+  return Promise.all(tasks);
+};
+
 export default function NewListing() {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
@@ -119,7 +130,7 @@ export default function NewListing() {
         voltage: selectedBattery.voltage ?? selectedBattery.nominalVoltage ?? "",
         imgs: batteryImgs.join(",") || ""
       };
-
+      console.log("AI Payload:", payload);
       const response = await api.post("/Battery_Price_Suggestion", payload);
       
       let suggestedPrice = response.data?.choices?.[0]?.message?.content;
@@ -337,6 +348,40 @@ export default function NewListing() {
     setVehicleImgs((s) => s.filter((_, i) => i !== index));
   };
 
+  // Hàm upload nhiều ảnh cho battery
+  const handleBatteryImageUpload = async (e) => {
+    try {
+      setUploadingBattery(true);
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+      
+      const imageUrls = await uploadImagesAndGetUrls(files, "battery-images");
+      setBatteryImgs((s) => [...s, ...imageUrls]);
+    } catch (error) {
+      console.error("Error uploading battery images:", error);
+      alert("Failed to upload battery images");
+    } finally {
+      setUploadingBattery(false);
+    }
+  };
+
+  // Hàm upload nhiều ảnh cho vehicle
+  const handleVehicleImageUpload = async (e) => {
+    try {
+      setUploadingVehicle(true);
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+      
+      const imageUrls = await uploadImagesAndGetUrls(files, "vehicle-images");
+      setVehicleImgs((s) => [...s, ...imageUrls]);
+    } catch (error) {
+      console.error("Error uploading vehicle images:", error);
+      alert("Failed to upload vehicle images");
+    } finally {
+      setUploadingVehicle(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -405,7 +450,7 @@ export default function NewListing() {
         listingVehicles: listingVehiclesData
       }
     ];
-
+    
     console.log("Final payload:", JSON.stringify(payload, null, 2));
 
     try {
@@ -445,41 +490,6 @@ export default function NewListing() {
       setError(`Error: ${errorMessage}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const uploadImage = async (file, path) => {
-    const storageRef = ref(storage, `${path}/${file.name}-${Date.now()}`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    return url;
-  };
-
-  const handleBatteryImageUpload = async (e) => {
-    try {
-      setUploadingBattery(true);
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = await uploadImage(file, "battery-images");
-      setBatteryImgs((s) => [...s, url]);
-    } catch (error) {
-      console.error("Error uploading battery image:", error);
-    } finally {
-      setUploadingBattery(false);
-    }
-  };
-
-  const handleVehicleImageUpload = async (e) => {
-    try {
-      setUploadingVehicle(true);
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = await uploadImage(file, "vehicle-images");
-      setVehicleImgs((s) => [...s, url]);
-    } catch (error) {
-      console.error("Error uploading vehicle image:", error);
-    } finally {
-      setUploadingVehicle(false);
     }
   };
 
@@ -577,7 +587,14 @@ export default function NewListing() {
 
                 <div className="flex items-center gap-2">
                   <label className="w-12 h-12 flex items-center justify-center border-2 border-dashed rounded cursor-pointer hover:bg-gray-50">
-                    <input type="file" accept="image/*" className="hidden" onChange={handleBatteryImageUpload} disabled={uploadingBattery} />
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      className="hidden" 
+                      onChange={handleBatteryImageUpload} 
+                      disabled={uploadingBattery} 
+                    />
                     {uploadingBattery ? <div className="loading-spinner" /> : <span className="text-2xl">+</span>}
                   </label>
                   <Button type="button" onClick={addBatteryToListing}>Add battery</Button>
@@ -655,7 +672,14 @@ export default function NewListing() {
 
                 <div className="flex items-center gap-2">
                   <label className="w-12 h-12 flex items-center justify-center border-2 border-dashed rounded cursor-pointer hover:bg-gray-50">
-                    <input type="file" accept="image/*" className="hidden" onChange={handleVehicleImageUpload} disabled={uploadingVehicle} />
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      className="hidden" 
+                      onChange={handleVehicleImageUpload} 
+                      disabled={uploadingVehicle} 
+                    />
                     {uploadingVehicle ? <div className="loading-spinner" /> : <span className="text-2xl">+</span>}
                   </label>
                   <Button type="button" onClick={addVehicleToListing}>Add vehicle</Button>
