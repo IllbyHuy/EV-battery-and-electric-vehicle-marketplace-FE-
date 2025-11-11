@@ -17,7 +17,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
 import { BatteryCharging, Car, ChevronRight, Star, Zap } from "lucide-react";
-import { getAllVehicles, getAllBatteries, setAuthToken } from "../../api/userApi";
+import { getAllListings, setAuthToken } from "../../api/ListingApi";
 
 // Use native selects for reliability
 
@@ -41,149 +41,15 @@ export default function HomePage() {
   const [aiCondition, setAiCondition] = React.useState("Good");
   const [aiEstimate, setAiEstimate] = React.useState(null);
 
-  // Items from API (vehicles + batteries)
-  const [items, setItems] = React.useState([]);
+  // Listings from API
+  const [listings, setListings] = React.useState([]);
   const [loadingListings, setLoadingListings] = React.useState(true);
   const [listingsError, setListingsError] = React.useState(null);
-  const [listingTab, setListingTab] = React.useState("All");
-
-  function unwrapApiCollection(response) {
-    if (!response) {
-      return { items: [], error: "Không nhận được phản hồi từ máy chủ." };
-    }
-
-    if (response?.isSuccess === false) {
-      const items = Array.isArray(response?.result) ? response.result : [];
-      return {
-        items,
-        error: response?.errorMessage ?? "Không thể tải dữ liệu.",
-      };
-    }
-
-    if (response?.isSuccess === true && Array.isArray(response?.result)) {
-      return { items: response.result };
-    }
-
-    if (Array.isArray(response?.result)) {
-      return { items: response.result };
-    }
-
-    if (Array.isArray(response?.data?.result)) {
-      return { items: response.data.result };
-    }
-
-    if (Array.isArray(response?.data)) {
-      return { items: response.data };
-    }
-
-    if (Array.isArray(response)) {
-      return { items: response };
-    }
-
-    return {
-      items: [],
-      error: response?.errorMessage ?? response?.message ?? null,
-    };
-  }
-
-  function normalizeVehicleForHome(vehicle, index) {
-    const id = vehicle?.id ?? vehicle?.vehicleId ?? vehicle?.vehicleID ?? `vehicle-${index}`;
-    const brand = vehicle?.brand ?? vehicle?.vehicleBrand ?? vehicle?.make ?? vehicle?.manufacturer ?? "Unknown";
-    const model = vehicle?.model ?? vehicle?.vehicleModel ?? vehicle?.name ?? vehicle?.title ?? "";
-    const name = [brand, model].filter(Boolean).join(" ") || `Vehicle ${index + 1}`;
-
-    const startYear = vehicle?.startYear ?? vehicle?.yearStart ?? vehicle?.year ?? vehicle?.beginYear ?? null;
-    const endYear = vehicle?.endYear ?? vehicle?.yearEnd ?? vehicle?.year ?? vehicle?.finishYear ?? null;
-    let yearRange = "—";
-    if (startYear && endYear) {
-      yearRange = startYear === endYear ? `${startYear}` : `${startYear}–${endYear}`;
-    } else if (startYear) {
-      yearRange = `${startYear}`;
-    } else if (endYear) {
-      yearRange = `${endYear}`;
-    }
-
-    const range = vehicle?.range ?? vehicle?.estimatedRange ?? vehicle?.rangeMi ?? vehicle?.rangeKm ?? null;
-    const drivetrain = vehicle?.drivetrain ?? vehicle?.drive ?? vehicle?.driveType ?? vehicle?.driveTrain ?? null;
-
-    const image =
-      vehicle?.imgs ??
-      (Array.isArray(vehicle?.images) && vehicle.images[0]) ??
-      vehicle?.imageUrl ??
-      vehicle?.image ??
-      "/placeholder.svg";
-
-    const price = vehicle?.price ?? vehicle?.suggestedPrice ?? vehicle?.marketPrice ?? null;
-
-    const specParts = [];
-    if (yearRange !== "—") specParts.push(yearRange);
-    if (range != null) specParts.push(`${range} mi`);
-    if (drivetrain) specParts.push(drivetrain);
-    const spec = specParts.filter(Boolean).join(" • ") || "";
-
-    return {
-      id: String(id),
-      type: "car",
-      title: name,
-      price: price ?? 0,
-      spec,
-      rating: vehicle?.rating ?? 0,
-      image,
-      tag: vehicle?.isAproved ? "Approved" : vehicle?.status ?? "Pending",
-      relatedId: id,
-      relatedKind: "vehicle",
-    };
-  }
-
-  function normalizeBatteryForHome(battery, index) {
-    const id = battery?.id ?? battery?.batteryId ?? battery?.batteryID ?? `battery-${index}`;
-    const brand = battery?.brand ?? battery?.manufacturer ?? battery?.maker ?? "Unknown";
-    const model = battery?.model ?? battery?.batteryModel ?? battery?.name ?? "";
-    const name = [brand, model].filter(Boolean).join(" ") || `Battery ${index + 1}`;
-
-    const capacity = battery?.capacity ?? battery?.capacityKWh ?? battery?.capacityAh ?? null;
-    const capacityUnit = battery?.capacityUnit ?? (battery?.capacityAh != null ? "Ah" : null) ?? (capacity != null ? "kWh" : null);
-    const voltage = battery?.voltage ?? battery?.voltageV ?? battery?.nominalVoltage ?? battery?.voltageRating ?? null;
-    const health = battery?.health ?? battery?.stateOfHealth ?? battery?.soh ?? battery?.healthPercent ?? null;
-
-    const image =
-      battery?.imgs ??
-      (Array.isArray(battery?.images) && battery.images[0]) ??
-      battery?.imageUrl ??
-      battery?.image ??
-      "/placeholder.svg";
-
-    const price = battery?.price ?? battery?.suggestedPrice ?? battery?.marketPrice ?? null;
-
-    const specParts = [];
-    if (capacity != null) {
-      const capacityStr = capacityUnit ? `${capacity} ${capacityUnit}` : String(capacity);
-      specParts.push(capacityStr);
-    }
-    if (voltage != null) specParts.push(`${voltage}V`);
-    if (health != null) specParts.push(`Health: ${health}%`);
-    const spec = specParts.filter(Boolean).join(" • ") || "";
-
-    return {
-      id: String(id),
-      type: "battery",
-      title: name,
-      price: price ?? 0,
-      spec,
-      rating: battery?.rating ?? 0,
-      image,
-      tag: battery?.isAproved ? "Approved" : battery?.status ?? "Pending",
-      relatedId: id,
-      relatedKind: "battery",
-    };
-  }
 
   React.useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        setLoadingListings(true);
-        setListingsError(null);
         // set Authorization header if token exists in storage
         const token =
           localStorage.getItem("authToken") ||
@@ -191,57 +57,88 @@ export default function HomePage() {
           sessionStorage.getItem("authToken");
         if (token) setAuthToken(token);
 
-        const [vehicleResponse, batteryResponse] = await Promise.all([
-          getAllVehicles(),
-          getAllBatteries(),
-        ]);
+        const data = await getAllListings();
         if (!mounted) return;
 
-        const { items: vehicleItems, error: vehicleError } = unwrapApiCollection(vehicleResponse);
-        const { items: batteryItems, error: batteryError } = unwrapApiCollection(batteryResponse);
+        // API có thể trả trực tiếp array hoặc object wrapper { result: [...] }
+        const items = Array.isArray(data) ? data : data?.result ?? data?.data ?? [];
 
-        const normalizedVehicles = (Array.isArray(vehicleItems) ? vehicleItems : []).map((vehicle, index) =>
-          normalizeVehicleForHome(vehicle, index),
-        );
-        const normalizedBatteries = (Array.isArray(batteryItems) ? batteryItems : []).map((battery, index) =>
-          normalizeBatteryForHome(battery, index),
-        );
+        const normalized = (items || []).map((item) => {
+          // Detect if listing contains batteries or vehicles
+          const firstBattery = item.listingBatteries && item.listingBatteries[0];
+          const firstVehicle = item.listingVehicles && item.listingVehicles[0];
 
-        const allItems = [...normalizedVehicles, ...normalizedBatteries];
+          const isBattery = Boolean(firstBattery) || (item.itemType && item.itemType.toLowerCase().includes("battery"));
+          const relatedId = isBattery ? firstBattery?.batteryId : firstVehicle?.vehicleId;
+          const relatedKind = isBattery ? "battery" : firstVehicle ? "vehicle" : null;
 
-        setItems(allItems);
+          const image =
+            firstBattery?.imgs ??
+            firstVehicle?.imgs ??
+            (Array.isArray(item.images) && item.images[0]) ??
+            item.imageUrl ??
+            item.image ??
+            "/placeholder.svg";
 
-        const errorMessages = [vehicleError, batteryError].filter(Boolean);
-        if (errorMessages.length > 0) {
-          setListingsError(errorMessages.join(" | "));
-        }
+          const price =
+            firstBattery?.price ??
+            firstBattery?.suggestedPrice ??
+            item.price ??
+            item.amount ??
+            0;
+
+          const title =
+            item.title ??
+            (isBattery ? `Battery ${relatedId ?? ""}` : firstVehicle ? `Vehicle ${relatedId ?? ""}` : item.model) ??
+            "Untitled";
+
+          // Build a compact spec string (health/price for battery, fallback for vehicle)
+          const specParts = [];
+          if (isBattery && firstBattery) {
+            if (firstBattery.health != null) specParts.push(`Health: ${firstBattery.health}%`);
+            if (firstBattery.price != null) specParts.push(`Price: ${Number(firstBattery.price).toLocaleString()}`);
+          } else {
+            if (item.range) specParts.push(`${item.range} mi`);
+            if (item.year) specParts.push(String(item.year));
+            if (item.drive) specParts.push(item.drive);
+          }
+          const fallbackParts = specParts.filter(Boolean).join(" • ");
+          const fallback = fallbackParts || item.description || "";
+          const spec = item.spec ?? fallback;
+
+          return {
+            id: item.id ?? item.listingId ?? item._id ?? String(Math.random()),
+            type: isBattery ? "battery" : "car",
+            title,
+            price,
+            spec,
+            rating: item.rating ?? 0,
+            image,
+            tag: item.tag ?? item.status ?? "",
+            // New fields: use these ids to fetch brand/model on detail page
+            relatedId,
+            relatedKind,
+          };
+        });
+
+        setListings(normalized);
       } catch (err) {
-        if (!mounted) return;
         const status = err?.response?.status;
         if (status === 401) {
           // unauthorized: show message and optionally redirect to login
           setListingsError("Unauthorized. Please log in.");
           navigate("/login");
         } else {
-          setListingsError(err?.message || "Failed to load items");
+          setListingsError(err?.message || "Failed to load listings");
         }
       } finally {
-        if (mounted) setLoadingListings(false);
+        setLoadingListings(false);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [navigate]);
-
-  // Filtered items for current tab view
-  const filteredItems = React.useMemo(() => {
-    if (!Array.isArray(items)) return [];
-    if (listingTab === "All") return items;
-    if (listingTab === "EVs") return items.filter((it) => it.type === "car");
-    if (listingTab === "Batteries") return items.filter((it) => it.type === "battery");
-    return items;
-  }, [items, listingTab]);
+  }, []);
 
   return (
     <div className="obys-hero min-h-screen">
@@ -531,85 +428,65 @@ export default function HomePage() {
 
           {/* replaced static grid with API-driven render */}
           {loadingListings ? (
-            <div className="text-center text-sm text-muted-foreground">Loading items…</div>
+            <div className="text-center text-sm text-muted-foreground">Loading listings…</div>
           ) : listingsError ? (
             <div className="text-center text-sm text-red-400">{listingsError}</div>
           ) : (
-            <>
-              {/* Tabs: All / EVs / Batteries */}
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                {["All", "EVs", "Batteries"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setListingTab(tab)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors focus:outline-none ${
-                      listingTab === tab
-                        ? "bg-primary text-white"
-                        : "bg-muted/20 text-white/80 hover:bg-muted/30"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-                <div className="ml-auto text-sm text-muted-foreground">Showing: {items.length} total</div>
-              </div>
-
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {filteredItems.map((item) => (
-                  <Link
-                    to={item.relatedKind === "vehicle" ? `/product/${item.relatedId}` : `/product/${item.relatedId}`}
-                    key={item.id}
-                    className="no-underline"
-                  >
-                    <Card className="group overflow-hidden transition-shadow hover:shadow-md">
-                      <div className="relative aspect-[4/3] bg-muted/40">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                        />
-                        <div className="absolute left-3 top-3">
-                          <Badge className="shadow-sm">{item.tag}</Badge>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {listings.map((item) => (
+                <Link
+                  to={`/listings/${item.id}`}
+                  key={item.id}
+                  className="no-underline"
+                >
+                  <Card className="group overflow-hidden transition-shadow hover:shadow-md">
+                    <div className="relative aspect-[4/3] bg-muted/40">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute left-3 top-3">
+                        <Badge className="shadow-sm">{item.tag}</Badge>
+                      </div>
+                    </div>
+                    <CardContent className="space-y-2 pt-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {item.type === "car" ? (
+                              <Car className="h-3.5 w-3.5" />
+                            ) : (
+                              <BatteryCharging className="h-3.5 w-3.5" />
+                            )}
+                            {item.type === "car" ? "EV" : "Battery"}
+                          </div>
+                          <h3 className="line-clamp-2 font-semibold leading-tight">
+                            {item.title}
+                          </h3>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold">
+                            {Number(item.price).toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            })}
+                          </div>
+                          <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                            <Star className="h-3 w-3 text-yellow-500" />{" "}
+                            {item.rating}
+                          </div>
                         </div>
                       </div>
-                      <CardContent className="space-y-2 pt-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              {item.type === "car" ? (
-                                <Car className="h-3.5 w-3.5" />
-                              ) : (
-                                <BatteryCharging className="h-3.5 w-3.5" />
-                              )}
-                              {item.type === "car" ? "EV" : "Battery"}
-                            </div>
-                            <h3 className="line-clamp-2 font-semibold leading-tight">
-                              {item.title}
-                            </h3>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xl font-bold">
-                              {Number(item.price).toLocaleString("en-US", {
-                                style: "currency",
-                                currency: "USD",
-                              })}
-                            </div>
-                            <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                              <Star className="h-3 w-3 text-yellow-500" />{" "}
-                              {item.rating}
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{item.spec}</p>
-                        <div className="pt-1">
-                          <span className="text-sm text-primary hover:underline">View details</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </>
+                      <p className="text-sm text-muted-foreground">{item.spec}</p>
+                      <div className="pt-1">
+                        <span className="text-sm text-primary hover:underline">View details</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
           )}
         </section>
       </Reveal>

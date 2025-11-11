@@ -49,10 +49,16 @@ export default function ProfilePage() {
           });
         }
 
-        // Lấy tất cả listings từ API - không lọc theo user
+        // Lấy tất cả listings từ API
         const allListings = await getAllListings();
-        // Chỉ hiển thị 5 listings đầu tiên
-        setListings(allListings.slice(0, 5));
+        
+        // Lọc listings của user hiện tại dựa trên userId
+        const userListings = allListings.filter(listing => 
+          listing.userId === user?.id
+        );
+        
+        // Chỉ hiển thị 5 listings đầu tiên của user
+        setListings(userListings.slice(0, 5));
       } catch (err) {
         console.error(err);
         setError(err?.response?.data?.errorMessage || err.message || "Failed to load profile");
@@ -93,70 +99,47 @@ export default function ProfilePage() {
     setShowEditModal(true);
   };
 
-const handleUpdateListing = async (e) => {
-  e.preventDefault();
-  if (!editingListing) return;
+  const handleUpdateListing = async (e) => {
+    e.preventDefault();
+    if (!editingListing) return;
 
-  setEditLoading(true);
-  try {
-    const listingId = editingListing.id ?? editingListing.listingId ?? editingListing._id;
+    setEditLoading(true);
+    try {
+      const listingId = editingListing.id ?? editingListing.listingId ?? editingListing._id;
+      
+      // Tạo payload update
+      const updatePayload = {
+        title: editForm.title.trim(),
+        description: editForm.description?.trim() || "",
+        address: editForm.address?.trim() || "",
+        listingBatteries: editingListing.listingBatteries || [],
+        listingVehicles: editingListing.listingVehicles || []
+      };
 
-    // Tạo payload update theo itemType
-    const updatePayload = {
-      title: editForm.title.trim(),
-      description: editForm.description?.trim() || "",
-      address: editForm.address?.trim() || "",
-      itemType: editForm.itemType, // Battery hoặc Vehicle
-      listingBatteries:
-        editForm.itemType === "Battery"
-          ? [
-              {
-                batteryId: editForm.batteryId || "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                health: Number(editForm.health) || 100,
-                price: Number(editForm.price) || 0,
-                suggestedPrice: Number(editForm.suggestedPrice) || 0,
-                imgs: editForm.imgs || "",
-              },
-            ]
-          : [],
-      listingVehicles:
-        editForm.itemType === "Vehicle"
-          ? [
-              {
-                vehicleId: editForm.vehicleId || "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                odometer: Number(editForm.odometer) || 0,
-                batteryHealth: Number(editForm.batteryHealth) || 100,
-                color: editForm.color || "White",
-                vin: editForm.vin || "",
-                licensePlate: editForm.licensePlate || "",
-                price: Number(editForm.price) || 0,
-                suggestedPrice: Number(editForm.suggestedPrice) || 0,
-                imgs: editForm.imgs || "",
-              },
-            ]
-          : [],
-    };
+      const payload = [updatePayload];
 
-    const res = await updateListing(listingId, updatePayload);
-    console.log("✅ Update response:", res);
+      console.log("Update payload:", JSON.stringify(payload, null, 2));
 
-    // Cập nhật lại state
-    setListings((prev) =>
-      prev.map((l) =>
-        (l.id ?? l.listingId ?? l._id) === listingId ? { ...l, ...updatePayload } : l
-      )
-    );
+      const res = await updateListing(listingId, payload);
+      console.log("Update response:", res);
 
-    setShowEditModal(false);
-    setEditingListing(null);
-    alert("Listing updated successfully!");
-  } catch (err) {
-    console.error(" Error updating listing:", err);
-    alert(err?.response?.data?.message || "Failed to update listing");
-  } finally {
-    setEditLoading(false);
-  }
-};
+      // Update listing in state
+      setListings(prev => prev.map(l => 
+        (l.id ?? l.listingId ?? l._id) === listingId 
+          ? { ...l, ...updatePayload }
+          : l
+      ));
+
+      setShowEditModal(false);
+      setEditingListing(null);
+      alert("Listing updated successfully!");
+    } catch (err) {
+      console.error("Error updating listing:", err);
+      alert(err?.response?.data?.message || "Failed to update listing");
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const handleViewAllListings = () => {
     navigate("/listings");
@@ -216,19 +199,25 @@ const handleUpdateListing = async (e) => {
           <div className="col-span-2">
             <div className="obys-card rounded-lg p-6 mb-6 text-white">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Recent Listings</h2>
-                <button
-                  onClick={handleViewAllListings}
-                  className="text-sm text-blue-400 hover:text-blue-300"
-                >
-                  View All Listings
-                </button>
+                <h2 className="text-xl font-semibold">
+                  {user ? "My Listings" : "Recent Listings"}
+                </h2>
+                {listings.length > 0 && (
+                  <button
+                    onClick={handleViewAllListings}
+                    className="text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    View All Listings
+                  </button>
+                )}
               </div>
 
               <div className="space-y-4">
                 {listings.length === 0 && (
                   <div className="text-center py-8">
-                    <div className="text-white/80 mb-4">No listings available.</div>
+                    <div className="text-white/80 mb-4">
+                      {user ? "You have no listings yet." : "No listings available."}
+                    </div>
                     {user && (
                       <button
                         className="btn btn-primary"
@@ -245,7 +234,7 @@ const handleUpdateListing = async (e) => {
                   const firstBattery = listing.listingBatteries?.[0];
                   const firstVehicle = listing.listingVehicles?.[0];
                   const displayPrice = firstBattery?.price || firstVehicle?.price;
-                  const isOwner = user && listing.userId === user.userId;
+                  const isOwner = user && listing.userId === user.id;
 
                   return (
                     <div
@@ -290,65 +279,65 @@ const handleUpdateListing = async (e) => {
                         </div>
                       </div>
 
-                      {/* Listing Footer với Action Buttons */}
-                      <div className="flex justify-between items-center pt-3 border-t border-white/10">
-                        <div className="text-xs text-white/60">
-                          {listing.userId && (
-                            <span>Owner: {listing.userId === user?.userId ? "You" : "Other user"}</span>
-                          )}
-                        </div>
+                      {/* Listing Footer với Action Buttons - chỉ hiển thị cho chủ sở hữu */}
+                      {isOwner && (
+                        <div className="flex justify-between items-center pt-3 border-t border-white/10">
+                          <div className="text-xs text-white/60">
+                            <span>Your listing</span>
+                          </div>
 
-                        {/* Action Buttons - chỉ hiển thị cho chủ sở hữu */}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditListing(listing);
-                            }}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors flex items-center gap-1"
-                            disabled={deleteLoading === listingId}
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                          {/* Action Buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditListing(listing);
+                              }}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors flex items-center gap-1"
+                              disabled={deleteLoading === listingId}
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              />
-                            </svg>
-                            Edit
-                          </button>
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                              Edit
+                            </button>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteListing(listingId);
-                            }}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors flex items-center gap-1"
-                            disabled={deleteLoading === listingId}
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteListing(listingId);
+                              }}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors flex items-center gap-1"
+                              disabled={deleteLoading === listingId}
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                            {deleteLoading === listingId ? "Deleting..." : "Delete"}
-                          </button>
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                              {deleteLoading === listingId ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
