@@ -11,6 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import { storage } from "../../config/firebase-config";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function AdminVehiclesPage() {
   const [vehicles, setVehicles] = useState([]);
@@ -31,8 +33,19 @@ export default function AdminVehiclesPage() {
     startYear: "",
     endYear: "",
     compatibleBatteryIds: [], // Array of battery IDs
+    imgs: "", // comma-separated URLs
   });
+  const [createImageFiles, setCreateImageFiles] = useState([]); // File[] for create
+  const [editImageFiles, setEditImageFiles] = useState([]); // File[] for edit
+  const [editImageUrls, setEditImageUrls] = useState([]); // existing urls in edit
   const [batteryDropdownOpen, setBatteryDropdownOpen] = useState(false);
+
+  const getFirstImage = (imgs) => {
+    if (!imgs) return "/placeholder.svg";
+    if (Array.isArray(imgs)) return imgs[0] || "/placeholder.svg";
+    const first = String(imgs).split(",").map((s) => s.trim()).filter(Boolean)[0];
+    return first || "/placeholder.svg";
+  };
 
   useEffect(() => {
     fetchVehicles();
@@ -81,6 +94,18 @@ export default function AdminVehiclesPage() {
     }
   };
 
+  // Upload helper: upload list of files to Firebase Storage, return URLs
+  const uploadImagesAndGetUrls = async (files, folder = "vehicle-images") => {
+    if (!files || files.length === 0) return [];
+    const uploadTasks = files.map(async (file) => {
+      const fileRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      return url;
+    });
+    return Promise.all(uploadTasks);
+  };
+
   // Handle create vehicle
   const handleCreateVehicle = async (e) => {
     e.preventDefault();
@@ -101,14 +126,22 @@ export default function AdminVehiclesPage() {
         startYear: Number(vehicleForm.startYear),
         endYear: Number(vehicleForm.endYear),
         compatibleBatteryIds: vehicleForm.compatibleBatteryIds,
+        imgs: "", // will be set after upload
       };
+
+      // Upload images if any, then set imgs (comma-separated urls)
+      const uploadedUrls = await uploadImagesAndGetUrls(createImageFiles, "vehicle-images");
+      if (uploadedUrls.length > 0) {
+        vehicleData.imgs = uploadedUrls.join(",");
+      }
 
       const response = await createVehicle(vehicleData);
 
       // Handle response structure: { statusCode, isSuccess, errorMessage, result }
       if (response.isSuccess) {
         // Reset form
-        setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [] });
+        setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [], imgs: "" });
+        setCreateImageFiles([]);
         setShowCreateForm(false);
         // Reload vehicle list after successful creation
         await fetchVehicles();
@@ -185,7 +218,13 @@ export default function AdminVehiclesPage() {
         batteries
           .filter(b => vehicle.batteryModels.includes(b.model) || vehicle.batteryModels.includes(`${b.brand} ${b.model}`))
           .map(b => b.id) : [],
+      imgs: typeof vehicle.imgs === "string" ? vehicle.imgs : Array.isArray(vehicle.imgs) ? vehicle.imgs.join(",") : "",
     });
+    const existingUrls = typeof vehicle.imgs === "string"
+      ? vehicle.imgs.split(",").map(s => s.trim()).filter(Boolean)
+      : Array.isArray(vehicle.imgs) ? vehicle.imgs : [];
+    setEditImageUrls(existingUrls);
+    setEditImageFiles([]);
   };
 
   // Handle update vehicle
@@ -210,7 +249,17 @@ export default function AdminVehiclesPage() {
         startYear: Number(vehicleForm.startYear),
         endYear: Number(vehicleForm.endYear),
         compatibleBatteryIds: vehicleForm.compatibleBatteryIds,
+        imgs: vehicleForm.imgs || "", // default to existing string
       };
+
+      // Upload any new files and merge with existing URLs
+      if (editImageFiles.length > 0) {
+        const newUrls = await uploadImagesAndGetUrls(editImageFiles, "vehicle-images");
+        const finalUrls = [...(editImageUrls || []), ...newUrls];
+        vehicleData.imgs = finalUrls.join(",");
+      } else if (editImageUrls && editImageUrls.length >= 0) {
+        vehicleData.imgs = editImageUrls.join(",");
+      }
 
       const response = await updateVehicle(editingVehicle.id, vehicleData);
 
@@ -218,7 +267,9 @@ export default function AdminVehiclesPage() {
       if (response.isSuccess) {
         // Reset form and close edit dialog
         setEditingVehicle(null);
-        setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [] });
+        setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [], imgs: "" });
+        setEditImageFiles([]);
+        setEditImageUrls([]);
         // Reload vehicle list after successful update
         await fetchVehicles();
       } else {
@@ -381,6 +432,28 @@ export default function AdminVehiclesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">
+                  Ảnh xe (có thể chọn nhiều)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setCreateImageFiles(files);
+                  }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                {createImageFiles && createImageFiles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {createImageFiles.map((f, i) => (
+                      <img key={i} src={URL.createObjectURL(f)} alt={f.name} className="w-20 h-20 object-cover rounded-md" />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
                   Pin tương thích
                 </label>
                 <div className="relative battery-dropdown-container">
@@ -455,7 +528,8 @@ export default function AdminVehiclesPage() {
                   variant="outline"
                   onClick={() => {
                     setShowCreateForm(false);
-                    setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [] });
+                    setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [], imgs: "" });
+                    setCreateImageFiles([]);
                     setError(null);
                   }}
                   disabled={creating}
@@ -552,6 +626,45 @@ export default function AdminVehiclesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">
+                  Ảnh xe
+                </label>
+                {editImageUrls && editImageUrls.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {editImageUrls.map((url, i) => (
+                      <div key={i} className="relative">
+                        <img src={url} alt={`vehicle-${i}`} className="w-20 h-20 object-cover rounded-md" />
+                        <button
+                          type="button"
+                          onClick={() => setEditImageUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                          title="Xóa ảnh"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setEditImageFiles(files);
+                  }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                {editImageFiles && editImageFiles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {editImageFiles.map((f, i) => (
+                      <img key={i} src={URL.createObjectURL(f)} alt={f.name} className="w-20 h-20 object-cover rounded-md" />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
                   Pin tương thích
                 </label>
                 <div className="relative battery-dropdown-container">
@@ -626,7 +739,9 @@ export default function AdminVehiclesPage() {
                   variant="outline"
                   onClick={() => {
                     setEditingVehicle(null);
-                    setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [] });
+                    setVehicleForm({ brand: "", model: "", startYear: "", endYear: "", compatibleBatteryIds: [], imgs: "" });
+                    setEditImageFiles([]);
+                    setEditImageUrls([]);
                     setError(null);
                   }}
                   disabled={updatingIds.has(editingVehicle.id)}
@@ -743,11 +858,12 @@ export default function AdminVehiclesPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
+                      <th className="text-left p-3 text-sm font-semibold">Ảnh</th>
                       <th className="text-left p-3 text-sm font-semibold">Brand</th>
                       <th className="text-left p-3 text-sm font-semibold">Model</th>
                       <th className="text-left p-3 text-sm font-semibold">Năm sản xuất</th>
                       <th className="text-left p-3 text-sm font-semibold">Battery Models</th>
-                      <th className="text-center p-3 text-sm font-semibold">Listings</th>
+                      {/* <th className="text-center p-3 text-sm font-semibold">Listings</th> */}
                       <th className="text-center p-3 text-sm font-semibold">Trạng thái</th>
                       <th className="text-center p-3 text-sm font-semibold">Action</th>
                     </tr>
@@ -758,6 +874,14 @@ export default function AdminVehiclesPage() {
                         key={vehicle.id}
                         className="border-b hover:bg-muted/50 transition-colors"
                       >
+                        <td className="p-3">
+                          <img
+                            src={getFirstImage(vehicle.imgs)}
+                            alt={`${vehicle.brand || ""} ${vehicle.model || ""}`.trim() || "vehicle"}
+                            className="w-14 h-14 object-cover rounded-md border"
+                            onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
+                          />
+                        </td>
                         <td className="p-3 text-sm font-medium">{vehicle.brand || "—"}</td>
                         <td className="p-3 text-sm">{vehicle.model || "—"}</td>
                         <td className="p-3 text-sm">
@@ -788,9 +912,9 @@ export default function AdminVehiclesPage() {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="p-3 text-sm text-center">
+                        {/* <td className="p-3 text-sm text-center">
                           <Badge variant="secondary">{vehicle.listingCount || 0}</Badge>
-                        </td>
+                        </td> */}
                         <td className="p-3 text-center">
                           {vehicle.isAproved ? (
                             <Badge className="bg-green-600 hover:bg-green-700">
